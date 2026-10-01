@@ -1,0 +1,3 @@
+# Keep LF line endings for everything so shell scripts and systemd units run
+# correctly on the Raspberry Pi regardless of the machine that clones them.
+* text=auto eol=lf

@@ -1,0 +1,8 @@
+# Optional udev rule granting the 'input' group read access to the reader.
+# Most Raspberry Pi OS images already allow the input group to read
+# /dev/input/event*. Install only if you see permission errors.
+#
+# Find your reader's vendor/product with: lsusb
+# Then adjust idVendor/idProduct below.
+
+SUBSYSTEM=="input", GROUP="input", MODE="0660"

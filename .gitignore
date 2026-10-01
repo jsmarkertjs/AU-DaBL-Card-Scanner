@@ -1,0 +1,15 @@
+# Local secrets / generated files
+config.yaml
+.env
+auid_to_canvas_id.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

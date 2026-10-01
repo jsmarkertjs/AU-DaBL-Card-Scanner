@@ -1,0 +1,19 @@
+[Unit]
+Description=AU Card Reader - Canvas assignment check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+# Needed to read /dev/input/event* without running as root.
+SupplementaryGroups=input
+WorkingDirectory=/opt/au-card-reader
+# Optional file with AU_CANVAS_TOKEN=... (see env.example)
+EnvironmentFile=-/etc/au-card-reader/env
+ExecStart=/usr/bin/python3 -m au_card_reader --config /etc/au-card-reader/config.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
