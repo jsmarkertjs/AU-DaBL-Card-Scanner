@@ -1,0 +1,17 @@
+[canvas]
+url = https://au.instructure.com
+# Leave blank and set the CANVAS_TOKEN env var instead (see deploy/env note).
+token =
+course_id =
+assignment_id =
+
+[tower]
+# "auto" finds the CH340 by USB VID. Or set an explicit port, e.g. /dev/ttyUSB0.
+port = auto
+
+[reader]
+# Substring of the card reader's input device name. Blank = first keyboard-like
+# device (fine on a headless Pi where the reader is the only one).
+device_name =
+# How long a result (green/red) stays before returning to idle yellow.
+result_seconds = 6

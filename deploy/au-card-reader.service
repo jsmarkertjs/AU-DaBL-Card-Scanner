@@ -1,17 +1,17 @@
 [Unit]
-Description=AU Card Reader - Canvas assignment check
+Description=AU card reader -> Canvas tower light
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=pi
-# Needed to read /dev/input/event* without running as root.
-SupplementaryGroups=input
+# input = read the card reader via /dev/input; dialout = the tower light serial port
+SupplementaryGroups=input dialout
 WorkingDirectory=/opt/au-card-reader
-# Optional file with AU_CANVAS_TOKEN=... (see env.example)
+# Optional file with CANVAS_TOKEN=... (see deploy/env.example)
 EnvironmentFile=-/etc/au-card-reader/env
-ExecStart=/usr/bin/python3 -m au_card_reader --config /etc/au-card-reader/config.yaml
+ExecStart=/usr/bin/python3 card_reader.py --config /etc/au-card-reader/config.ini
 Restart=on-failure
 RestartSec=5
 

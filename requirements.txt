@@ -1,7 +1,6 @@
 requests>=2.28
-PyYAML>=6.0
+pyserial>=3.5
 
 # On the Raspberry Pi, install evdev from apt instead of pip:
 #   sudo apt install python3-evdev
-# It is only needed for the evdev input source.
-evdev>=1.6; sys_platform == "linux"
+# It is only needed to read the card reader on the Pi.

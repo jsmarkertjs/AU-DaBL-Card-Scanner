@@ -1,12 +1,9 @@
-# Local secrets / generated files
-config.yaml
-.env
-auid_to_canvas_id.csv
+# Local config / secrets
+config.ini
 
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
 .venv/
 venv/
 
