@@ -149,6 +149,22 @@ class Canvas:
         return bool(sub.get("graded_at")) or sub.get("workflow_state") == "graded"
 
 
+class MockCanvas:
+    """Offline stand-in so the reader + tower can be tested without a token.
+
+    Deterministic: AUIDs whose digits sum to an even number are "graded".
+    """
+
+    def roster(self, course_id: int) -> dict:
+        return {}
+
+    def find_user(self, roster: dict, auid: str):
+        return int(auid) if auid.isdigit() else None
+
+    def is_graded(self, course_id: int, assignment_id: int, user_id: int) -> bool:
+        return sum(int(c) for c in str(user_id)) % 2 == 0
+
+
 # --- Card input ------------------------------------------------------------
 def parse_auid(raw: str) -> str:
     """`;00555036321?` -> `5550363` (middle 7 digits of the digit run)."""
@@ -215,10 +231,10 @@ def load_config(path: str) -> dict:
     }
 
 
-def run(config: dict, use_stdin: bool) -> int:
+def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
     tower = TowerLight(config["port"])
     tower.show("yellow")
-    canvas = Canvas(config["url"], config["token"])
+    canvas = MockCanvas() if mock else Canvas(config["url"], config["token"])
     roster: dict[str, int] | None = None
 
     swipes = (line for line in sys.stdin) if use_stdin else read_swipes_evdev(
@@ -261,6 +277,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="AU card reader -> Canvas tower light")
     parser.add_argument("--config", default="config.ini")
     parser.add_argument("--stdin", action="store_true", help="read swipes from stdin (dev)")
+    parser.add_argument("--mock", action="store_true",
+                        help="use a fake Canvas (test reader + tower offline)")
     parser.add_argument("--test-lamp", action="store_true", help="cycle the tower colors")
     args = parser.parse_args(argv)
 
@@ -275,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
         tower.close()
         return 0
 
-    return run(config, args.stdin)
+    return run(config, args.stdin, args.mock)
 
 
 if __name__ == "__main__":
