@@ -117,11 +117,26 @@ class Canvas:
         resp.raise_for_status()
         return resp.json()
 
+    def _get_all(self, path: str, params: dict | None = None) -> list:
+        """GET a paginated endpoint, following the Link: rel=next header."""
+        url = self._base + path
+        results: list = []
+        while url:
+            resp = self._session.get(url, params=params, timeout=self._timeout)
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+            data = resp.json()
+            results.extend(data if isinstance(data, list) else [data])
+            url = (resp.links.get("next") or {}).get("url")
+            params = None  # the next link already carries its query string
+        return results
+
     def roster(self, course_id: int) -> dict[str, int]:
-        """Map sis_user_id / login_id -> Canvas user id (one page = a class)."""
-        users = self._get(
+        """Map sis_user_id / login_id -> Canvas user id (paginated)."""
+        users = self._get_all(
             f"/api/v1/courses/{course_id}/users", {"per_page": 100}
-        ) or []
+        )
         mapping: dict[str, int] = {}
         for user in users:
             user_id = user.get("id")
