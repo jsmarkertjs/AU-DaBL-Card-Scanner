@@ -54,6 +54,15 @@ python3 card_reader.py --test-lamp
 
 Cycles yellow → green → red → error blink → yellow.
 
+To see what the Pi detects (pick the reader's name for `reader.device_name`):
+
+```bash
+python3 card_reader.py --list-devices
+```
+
+The tower light is auto-detected by USB VID `0x1A86`, and the reader by
+scanning input devices for a keyboard, so neither depends on a fixed port.
+
 ## Run locally on a laptop (no Pi)
 
 ```bash

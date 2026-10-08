@@ -221,6 +221,32 @@ def read_swipes_evdev(name_regex: str):
             buffer.append(digit_keys[event.code])
 
 
+def list_devices() -> None:
+    """Show input devices (card reader) and serial ports (tower light)."""
+    try:
+        import evdev
+        from evdev import ecodes
+    except ImportError:
+        print("Input devices: evdev not installed (only needed on the Pi)")
+    else:
+        print("Input devices (pick one whose name substring goes in reader.device_name):")
+        for path in evdev.list_devices():
+            device = evdev.InputDevice(path)
+            keys = device.capabilities().get(ecodes.EV_KEY, [])
+            print(f"  {device.path}\tkeyboard={ecodes.KEY_1 in keys}\tname={device.name!r}")
+            device.close()
+    try:
+        import serial.tools.list_ports as list_ports
+    except ImportError:
+        print("Serial ports: pyserial not installed")
+    else:
+        print("Serial ports:")
+        for port in list_ports.comports():
+            vid = f"0x{port.vid:04X}" if port.vid else "?"
+            tag = "  <- tower (CH340)" if port.vid == TOWER_VID else ""
+            print(f"  {port.device}\tvid={vid}\t{port.description}{tag}")
+
+
 # --- Config + main ---------------------------------------------------------
 def load_config(path: str) -> dict:
     cfg = configparser.ConfigParser()
@@ -295,9 +321,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mock", action="store_true",
                         help="use a fake Canvas (test reader + tower offline)")
     parser.add_argument("--test-lamp", action="store_true", help="cycle the tower colors")
+    parser.add_argument("--list-devices", action="store_true",
+                        help="list input devices + serial ports and exit")
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
+
+    if args.list_devices:
+        list_devices()
+        return 0
 
     if args.test_lamp:
         tower = TowerLight(config["port"])
