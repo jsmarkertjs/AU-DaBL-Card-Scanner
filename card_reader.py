@@ -183,17 +183,22 @@ class MockCanvas:
 
 
 # --- Swipe logging to a Google Sheet (via Apps Script web app) --------------
-def _post_log(config: dict, auid: str) -> None:
+def _post_log(config: dict, auid: str, status: str) -> None:
     timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
     resp = requests.post(
         config["log_url"],
-        json={"token": config["log_token"], "timestamp": timestamp, "auid": auid},
+        json={
+            "token": config["log_token"],
+            "timestamp": timestamp,
+            "auid": auid,
+            "status": status,
+        },
         timeout=config["log_timeout"],
     )
     resp.raise_for_status()
 
 
-def log_swipe(config: dict, auid: str) -> None:
+def log_swipe(config: dict, auid: str, status: str) -> None:
     """Fire-and-forget: log one swipe without blocking the swipe loop.
 
     No retry / no local buffer; if offline the POST just fails and warns.
@@ -203,7 +208,7 @@ def log_swipe(config: dict, auid: str) -> None:
 
     def _worker() -> None:
         try:
-            _post_log(config, auid)
+            _post_log(config, auid, status)
         except requests.RequestException as exc:
             log.warning("log POST failed: %s", exc)
 
@@ -215,7 +220,7 @@ def log_test(config: dict) -> int:
         print("No [log] url configured in the config file.")
         return 1
     try:
-        _post_log(config, "TEST")
+        _post_log(config, "TEST", "Green")
     except requests.RequestException as exc:
         print(f"error: {exc}")
         return 1
@@ -338,25 +343,24 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
             auid = parse_auid(raw)
             if not auid:
                 continue
-            log_swipe(config, auid)
             try:
                 if roster is None:
                     roster = canvas.roster(config["course_id"])
                 user_id = canvas.find_user(roster, auid)
-                if user_id is None:
-                    tower.show("red")
-                    log.info("AUID %s -> not found -> RED", auid)
-                elif canvas.is_graded(
+                if user_id is not None and canvas.is_graded(
                     config["course_id"], config["assignment_id"], user_id
                 ):
+                    status = "Green"
                     tower.show("green")
                     log.info("AUID %s -> graded -> GREEN", auid)
                 else:
+                    status = "Red"
                     tower.show("red")
-                    log.info("AUID %s -> not graded -> RED", auid)
+                    log.info("AUID %s -> not graded / not found -> RED", auid)
+                log_swipe(config, auid, status)
             except requests.RequestException as exc:
                 tower.show("error")
-                log.error("Canvas error: %s", exc)
+                log.error("Canvas error (swipe not logged): %s", exc)
             time.sleep(config["result_seconds"])
             tower.show("yellow")
     except KeyboardInterrupt:

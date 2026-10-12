@@ -65,14 +65,15 @@ scanning input devices for a keyboard, so neither depends on a fixed port.
 
 ## Logging swipes to a Google Sheet
 
-Every swipe appends a `Timestamp` + `AUID` row to a Google Sheet, via a small
-Apps Script that the Pi calls over HTTPS. The Pi only needs `requests`; no
-Google libraries or key files.
+Every swipe appends a `Timestamp`, `AUID`, and `Status` (Green/Red) row to a
+Google Sheet, via a small Apps Script that the Pi calls over HTTPS. The Pi only
+needs `requests`; no Google libraries or key files.
 
 One-time setup:
 
-1. Create a Google Sheet and put your column headers in row 1 (the script
-   appends `[timestamp, auid]`, so order the headers to match).
+1. Create a Google Sheet and put your column headers in row 1: **Timestamp,
+   AUID, Status** (the script appends `[timestamp, auid, status]`, so order the
+   headers to match).
 2. In the sheet: **Extensions → Apps Script**, paste:
 
    ```js
@@ -86,7 +87,7 @@ One-time setup:
      lock.waitLock(10000);
      try {
        SpreadsheetApp.openById(SHEET_ID).getSheets()[0]
-         .appendRow([body.timestamp, body.auid]);
+         .appendRow([body.timestamp, body.auid, body.status]);
      } finally { lock.releaseLock(); }
      return ContentService.createTextOutput('ok');
    }
