@@ -1,5 +1,5 @@
 [canvas]
-url = https://au.instructure.com
+url = https://american.instructure.com
 # Leave blank and set the CANVAS_TOKEN env var instead (see deploy/env note).
 token =
 course_id =
@@ -15,3 +15,11 @@ port = auto
 device_name =
 # How long a result (green/red) stays before returning to idle yellow.
 result_seconds = 6
+
+[log]
+# Append every swipe (timestamp + AUID) to a Google Sheet via an Apps Script
+# web app. See the README for the one-time setup. Keep this file private.
+enabled = false
+url =
+token =
+timeout = 5

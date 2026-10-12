@@ -21,7 +21,9 @@ import logging
 import os
 import re
 import sys
+import threading
 import time
+from datetime import datetime
 
 import requests
 
@@ -180,6 +182,47 @@ class MockCanvas:
         return sum(int(c) for c in str(user_id)) % 2 == 0
 
 
+# --- Swipe logging to a Google Sheet (via Apps Script web app) --------------
+def _post_log(config: dict, auid: str) -> None:
+    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
+    resp = requests.post(
+        config["log_url"],
+        json={"token": config["log_token"], "timestamp": timestamp, "auid": auid},
+        timeout=config["log_timeout"],
+    )
+    resp.raise_for_status()
+
+
+def log_swipe(config: dict, auid: str) -> None:
+    """Fire-and-forget: log one swipe without blocking the swipe loop.
+
+    No retry / no local buffer; if offline the POST just fails and warns.
+    """
+    if not config["log_enabled"] or not config["log_url"]:
+        return
+
+    def _worker() -> None:
+        try:
+            _post_log(config, auid)
+        except requests.RequestException as exc:
+            log.warning("log POST failed: %s", exc)
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def log_test(config: dict) -> int:
+    if not config["log_url"]:
+        print("No [log] url configured in the config file.")
+        return 1
+    try:
+        _post_log(config, "TEST")
+    except requests.RequestException as exc:
+        print(f"error: {exc}")
+        return 1
+    print("Sent a test row. Check the spreadsheet.")
+    return 0
+
+
 # --- Card input ------------------------------------------------------------
 def parse_auid(raw: str) -> str:
     """`;00555036321?` -> `5550363` (middle 7 digits of the digit run)."""
@@ -260,15 +303,23 @@ def load_config(path: str) -> dict:
         raw = text(section, option)
         return cast(raw) if raw else fallback
 
+    def flag(section: str, option: str, fallback: bool = False) -> bool:
+        raw = text(section, option)
+        return raw.lower() in ("1", "true", "yes", "on") if raw else fallback
+
     token = os.environ.get("CANVAS_TOKEN") or text("canvas", "token")
     return {
-        "url": text("canvas", "url", "https://au.instructure.com"),
+        "url": text("canvas", "url", "https://american.instructure.com"),
         "token": token,
         "course_id": number("canvas", "course_id", 0, int),
         "assignment_id": number("canvas", "assignment_id", 0, int),
         "port": text("tower", "port", "auto"),
         "device_name": text("reader", "device_name"),
         "result_seconds": number("reader", "result_seconds", 6.0, float),
+        "log_enabled": flag("log", "enabled", False),
+        "log_url": text("log", "url"),
+        "log_token": text("log", "token"),
+        "log_timeout": number("log", "timeout", 5.0, float),
     }
 
 
@@ -287,6 +338,7 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
             auid = parse_auid(raw)
             if not auid:
                 continue
+            log_swipe(config, auid)
             try:
                 if roster is None:
                     roster = canvas.roster(config["course_id"])
@@ -323,6 +375,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--test-lamp", action="store_true", help="cycle the tower colors")
     parser.add_argument("--list-devices", action="store_true",
                         help="list input devices + serial ports and exit")
+    parser.add_argument("--log-test", action="store_true",
+                        help="send one test row to the configured log URL and exit")
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
@@ -330,6 +384,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_devices:
         list_devices()
         return 0
+
+    if args.log_test:
+        return log_test(config)
 
     if args.test_lamp:
         tower = TowerLight(config["port"])

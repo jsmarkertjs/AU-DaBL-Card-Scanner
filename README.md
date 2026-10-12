@@ -63,6 +63,61 @@ python3 card_reader.py --list-devices
 The tower light is auto-detected by USB VID `0x1A86`, and the reader by
 scanning input devices for a keyboard, so neither depends on a fixed port.
 
+## Logging swipes to a Google Sheet
+
+Every swipe appends a `Timestamp` + `AUID` row to a Google Sheet, via a small
+Apps Script that the Pi calls over HTTPS. The Pi only needs `requests`; no
+Google libraries or key files.
+
+One-time setup:
+
+1. Create a Google Sheet and put your column headers in row 1 (the script
+   appends `[timestamp, auid]`, so order the headers to match).
+2. In the sheet: **Extensions → Apps Script**, paste:
+
+   ```js
+   const SHEET_ID = 'YOUR_SPREADSHEET_ID';        // from the sheet's URL
+   const SECRET   = 'YOUR_LONG_RANDOM_SECRET';    // make one up, keep it secret
+
+   function doPost(e) {
+     const body = JSON.parse(e.postData.contents);
+     if (body.token !== SECRET) return ContentService.createTextOutput('forbidden');
+     const lock = LockService.getScriptLock();
+     lock.waitLock(10000);
+     try {
+       SpreadsheetApp.openById(SHEET_ID).getSheets()[0]
+         .appendRow([body.timestamp, body.auid]);
+     } finally { lock.releaseLock(); }
+     return ContentService.createTextOutput('ok');
+   }
+   ```
+
+3. **Deploy → New deployment → Web app**; **Execute as: Me**;
+   **Who has access: Anyone** → copy the `/exec` URL.
+4. Keep the sheet itself **private** (the web app writes on your behalf, so the
+   sheet does not need to be shared).
+
+Then in `/etc/au-card-reader/config.ini` on the Pi:
+
+```ini
+[log]
+enabled = true
+url = https://script.google.com/macros/s/XXXX/exec
+token = YOUR_LONG_RANDOM_SECRET
+timeout = 5
+```
+
+Test it without swiping:
+
+```bash
+python3 card_reader.py --log-test --config /etc/au-card-reader/config.ini
+```
+
+If the Pi is offline, the row is simply skipped (a warning is logged).
+
+**Do not commit the `/exec` URL, the secret, or the sheet link** — they live
+only in `config.ini` (gitignored).
+
 ## Run locally on a laptop (no Pi)
 
 ```bash
