@@ -387,7 +387,9 @@ class SoundPlayer:
                 if device:
                     cmd += ["-o", "alsa", "-a", device]
             if self._volume is not None:
-                cmd += ["-f", str(max(0.0, min(1.5, self._volume / 100.0)))]
+                # mpg123 -f takes an integer scalefactor (32768 == 100%).
+                scale = int(max(0.0, min(1.5, self._volume / 100.0)) * 32768)
+                cmd += ["-f", str(scale)]
         cmd.append(path)
         try:
             subprocess.run(cmd, timeout=120, check=False)
