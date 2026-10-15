@@ -20,7 +20,11 @@ import argparse
 import configparser
 import logging
 import os
+import queue
 import re
+import shlex
+import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -283,6 +287,80 @@ def log_test(config: dict) -> int:
     return 0
 
 
+# --- Sound effects (per-AUID audio via the headphone jack) ------------------
+class SoundPlayer:
+    """Plays <dir>/<AUID>.<ext> through a decoder, one at a time (queued)."""
+
+    def __init__(self, directory: str = "Sounds", player: str = "mpg123",
+                 volume: float = 80.0, player_args: str = "", enabled: bool = True):
+        self._dir = directory
+        self._player = player
+        self._volume = volume
+        self._player_args = shlex.split(player_args) if player_args else []
+        self._enabled = enabled
+        self._queue: queue.Queue = queue.Queue()
+        self._thread: threading.Thread | None = None
+        self._warned: set[str] = set()
+
+    def _warn_once(self, key: str, message: str) -> None:
+        if key not in self._warned:
+            self._warned.add(key)
+            log.warning(message)
+
+    def _find(self, auid: str) -> str | None:
+        for ext in (".mp3", ".wav", ".ogg"):
+            path = os.path.join(self._dir, auid + ext)
+            if os.path.exists(path):
+                return path
+        return None
+
+    def enqueue(self, auid: str) -> None:
+        """Queue a card's sound if a matching file exists (never blocks)."""
+        if not self._enabled:
+            return
+        path = self._find(auid)
+        if path is None:
+            return
+        self._queue.put(path)
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._work, daemon=True)
+            self._thread.start()
+
+    def _work(self) -> None:
+        while True:
+            path = self._queue.get()
+            try:
+                self.play_file(path)
+            finally:
+                self._queue.task_done()
+
+    def play_file(self, path: str) -> None:
+        exe = shutil.which(self._player)
+        if not exe:
+            self._warn_once(
+                "no_player",
+                f"audio player '{self._player}' not found; install it "
+                "(e.g. sudo apt install mpg123)",
+            )
+            return
+        cmd = [exe, "-q", *self._player_args]
+        if os.path.basename(exe) == "mpg123" and self._volume is not None:
+            cmd += ["-f", str(max(0.0, min(1.5, self._volume / 100.0)))]
+        cmd.append(path)
+        try:
+            subprocess.run(cmd, timeout=120, check=False)
+        except Exception as exc:
+            log.warning("audio playback failed: %s", exc)
+
+    def play_auid(self, auid: str) -> bool:
+        """Play a card's sound now (blocking); returns False if no file."""
+        path = self._find(auid)
+        if path is None:
+            return False
+        self.play_file(path)
+        return True
+
+
 # --- Card input ------------------------------------------------------------
 def parse_auid(raw: str) -> str:
     """`;00555036321?` -> `5550363` (middle 7 digits of the digit run)."""
@@ -382,6 +460,11 @@ def load_config(path: str) -> dict:
         "log_url": text("log", "url"),
         "log_token": text("log", "token"),
         "log_timeout": number("log", "timeout", 5.0, float),
+        "audio_enabled": flag("audio", "enabled", True),
+        "audio_dir": text("audio", "dir", "Sounds"),
+        "audio_player": text("audio", "player", "mpg123"),
+        "audio_volume": number("audio", "volume", 80.0, float),
+        "audio_args": text("audio", "player_args"),
     }
 
 
@@ -389,6 +472,13 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
     tower = TowerLight(config["port"])
     tower.show("yellow")
     canvas = MockCanvas() if mock else Canvas(config["url"], config["token"])
+    audio = SoundPlayer(
+        config["audio_dir"],
+        config["audio_player"],
+        config["audio_volume"],
+        config["audio_args"],
+        config["audio_enabled"],
+    )
     roster: dict[str, int] | None = None
 
     swipes = (line for line in sys.stdin) if use_stdin else read_swipes_evdev(
@@ -400,6 +490,7 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
             auid = parse_auid(raw)
             if not auid:
                 continue
+            audio.enqueue(auid)
             try:
                 if roster is None:
                     roster = canvas.roster(config["course_id"])
@@ -442,6 +533,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="list input devices + serial ports and exit")
     parser.add_argument("--log-test", action="store_true",
                         help="send one test row to the configured log URL and exit")
+    parser.add_argument("--play", metavar="AUID",
+                        help="play the sound for an AUID and exit")
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
@@ -452,6 +545,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.log_test:
         return log_test(config)
+
+    if args.play:
+        audio = SoundPlayer(
+            config["audio_dir"],
+            config["audio_player"],
+            config["audio_volume"],
+            config["audio_args"],
+            enabled=True,
+        )
+        if audio.play_auid(args.play):
+            return 0
+        print(f"No sound file for {args.play!r} in {config['audio_dir']!r}")
+        return 1
 
     if args.test_lamp:
         tower = TowerLight(config["port"])

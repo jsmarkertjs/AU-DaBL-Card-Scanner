@@ -129,6 +129,30 @@ If the Pi is offline, the row is simply skipped (a warning is logged).
 **Do not commit the `/exec` URL, the secret, or the sheet link** — they live
 only in `config.ini` (gitignored).
 
+## Sound effects per card
+
+When a card is swiped, if a sound file named after its AUID exists, it's played
+through the headphone jack (queued, one at a time). Files live in `Sounds/` and
+are **gitignored** — name them `<AUID>.mp3` (or `.wav`/`.ogg`), e.g.
+`Sounds/5550363.mp3`. This runs alongside the light/log — nothing else changes.
+
+Config (`/etc/au-card-reader/config.ini`):
+
+```ini
+[audio]
+enabled = true
+dir = Sounds
+player = mpg123
+volume = 80
+player_args =
+```
+
+- Requires `mpg123` on the Pi (`sudo apt install mpg123`; `install.sh` does this).
+- Route audio to the **headphones jack**: `sudo raspi-config` → System Options →
+  Audio → Headphones (or `wpctl`/`amixer` on older images).
+- Test without swiping: `python3 card_reader.py --play 5550363`.
+- If it's silent from the service, try forcing ALSA: `player_args = -o alsa`.
+
 ## Run locally on a laptop (no Pi)
 
 ```bash
@@ -141,6 +165,6 @@ python card_reader.py --config config.ini --test-lamp # exercise the tower
 ## Notes
 
 - The Pi needs internet for Canvas.
-- `dialout` group = tower serial port; `input` group = card reader.
+- Groups: `dialout` = tower serial, `input` = card reader, `audio` = sound.
 - If the tower serial gets grabbed on the Pi, mask `brltty`/`ModemManager`
   (see `docs/tower-lamp.md`).

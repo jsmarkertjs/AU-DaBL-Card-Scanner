@@ -27,3 +27,13 @@ enabled = false
 url =
 token =
 timeout = 5
+
+[audio]
+# Play <dir>/<AUID>.mp3 (or .wav/.ogg) through the headphone jack when that
+# card is swiped. Put files in Sounds/ named after the AUID (e.g. 5550363.mp3).
+enabled = true
+dir = Sounds
+player = mpg123
+volume = 80
+# Extra player args if needed, e.g. "-o alsa" to force ALSA output.
+player_args =

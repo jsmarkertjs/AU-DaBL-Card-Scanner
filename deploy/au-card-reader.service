@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=pi
 # input = read the card reader via /dev/input; dialout = the tower light serial port
-SupplementaryGroups=input dialout
+SupplementaryGroups=input dialout audio
 WorkingDirectory=/opt/au-card-reader
 # Optional file with CANVAS_TOKEN=... (see deploy/env.example)
 EnvironmentFile=-/etc/au-card-reader/env

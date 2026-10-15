@@ -14,7 +14,7 @@ SERVICE_USER="${SUDO_USER:-pi}"
 
 echo "Installing system packages..."
 apt-get update
-apt-get install -y python3-requests python3-serial python3-evdev
+apt-get install -y python3-requests python3-serial python3-evdev mpg123 alsa-utils
 
 echo "Setting up configuration in ${CONF_DIR}..."
 mkdir -p "${CONF_DIR}"
@@ -28,8 +28,8 @@ if [ ! -f "${CONF_DIR}/env" ]; then
     echo "  -> put your Canvas token in ${CONF_DIR}/env"
 fi
 
-echo "Adding ${SERVICE_USER} to input + dialout groups..."
-usermod -aG input,dialout "${SERVICE_USER}" || true
+echo "Adding ${SERVICE_USER} to input + dialout + audio groups..."
+usermod -aG input,dialout,audio "${SERVICE_USER}" || true
 
 echo "Installing systemd service..."
 sed -e "s|^User=.*|User=${SERVICE_USER}|" \
