@@ -8,9 +8,6 @@ assignment_id =
 [tower]
 # "auto" finds the CH340 by USB VID. Or set an explicit port, e.g. /dev/ttyUSB0.
 port = auto
-# Idle effect. The tower has no brightness/PWM control, so a smooth fade is not
-# possible; true = its built-in blink (pulsing yellow), false = solid yellow.
-pulse_idle = true
 
 [reader]
 # Substring of the card reader's input device name. Blank = first keyboard-like

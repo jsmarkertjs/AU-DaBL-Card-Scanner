@@ -13,11 +13,6 @@ sets an Adafruit USB tower light:
 
 The buzzer is never used (it browns out the device — see `docs/tower-lamp.md`).
 
-By default the idle yellow **pulses** using the tower's built-in blink
-(`[tower] pulse_idle = true`); set it to `false` for steady yellow. Note the
-tower has no brightness/PWM command, so it **cannot fade** — the built-in
-blink is the only pulse effect it supports.
-
 ## How it works
 
 One file, `card_reader.py`:
