@@ -34,7 +34,7 @@ log = logging.getLogger("card_reader")
 
 # --- Tower light (Adafruit #5125): one raw byte per command -----------------
 RED_ON, RED_OFF, RED_BLINK = 0x11, 0x21, 0x41
-YELLOW_ON, YELLOW_OFF = 0x12, 0x22
+YELLOW_ON, YELLOW_OFF, YELLOW_BLINK = 0x12, 0x22, 0x42
 GREEN_ON, GREEN_OFF = 0x14, 0x24
 TOWER_VID = 0x1A86  # CH340
 
@@ -42,9 +42,10 @@ TOWER_VID = 0x1A86  # CH340
 class TowerLight:
     """Tri-color tower over USB serial. Missing pyserial/device is non-fatal."""
 
-    def __init__(self, port: str = "auto", baud: int = 9600):
+    def __init__(self, port: str = "auto", baud: int = 9600, idle_blink: bool = False):
         self._port = port
         self._baud = baud
+        self._idle_blink = idle_blink
         self._serial = None
         self._warned: set[str] = set()
 
@@ -87,7 +88,10 @@ class TowerLight:
             self._send(RED_ON)
         elif state == "error":
             self._send(RED_BLINK)
-        else:  # yellow / idle
+        elif state == "idle":
+            # No brightness control on this device: "pulse" = the built-in blink.
+            self._send(YELLOW_BLINK if self._idle_blink else YELLOW_ON)
+        else:  # solid yellow
             self._send(YELLOW_ON)
 
     def close(self) -> None:
@@ -319,6 +323,7 @@ def load_config(path: str) -> dict:
         "course_id": number("canvas", "course_id", 0, int),
         "assignment_id": number("canvas", "assignment_id", 0, int),
         "port": text("tower", "port", "auto"),
+        "pulse_idle": flag("tower", "pulse_idle", True),
         "device_name": text("reader", "device_name"),
         "result_seconds": number("reader", "result_seconds", 6.0, float),
         "log_enabled": flag("log", "enabled", False),
@@ -329,8 +334,8 @@ def load_config(path: str) -> dict:
 
 
 def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
-    tower = TowerLight(config["port"])
-    tower.show("yellow")
+    tower = TowerLight(config["port"], idle_blink=config["pulse_idle"])
+    tower.show("idle")
     canvas = MockCanvas() if mock else Canvas(config["url"], config["token"])
     roster: dict[str, int] | None = None
 
@@ -362,7 +367,7 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
                 tower.show("error")
                 log.error("Canvas error (swipe not logged): %s", exc)
             time.sleep(config["result_seconds"])
-            tower.show("yellow")
+            tower.show("idle")
     except KeyboardInterrupt:
         log.info("Stopping")
     finally:
