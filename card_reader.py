@@ -253,6 +253,7 @@ def _post_log(config: dict, auid: str, status: str) -> None:
             "status": status,
         },
         timeout=config["log_timeout"],
+        allow_redirects=False,  # the row is appended during the POST itself
     )
     resp.raise_for_status()
 
