@@ -1,15 +1,17 @@
 # AU DaBL Card Scanner
 
 A Raspberry Pi reads student AU IDs from a keyboard-emulating card reader,
-checks Canvas to see whether a specific assignment has been **graded**, and
-sets an Adafruit USB tower light:
+checks Canvas for the **Safety Waiver** (graded) and the **Safety Quiz**
+(score ≥ passing), and sets an Adafruit USB tower light:
 
 | Light | Meaning |
 | ----- | ------- |
-| 🟡 Yellow | Idle / waiting |
-| 🟢 Green | Assignment submitted and graded |
-| 🔴 Red | Not graded, or student not found |
-| 🔴 Blinking | Canvas / network error |
+| 🟢 Solid green | Fully cleared — waiver **and** quiz |
+| 🟢🟡 Green/Yellow (alternating) | Waiver done, quiz missing |
+| 🟡🔴 Yellow/Red (alternating) | Quiz passed, waiver missing |
+| 🔴 Solid red | Neither — no progress |
+| 🔴 Blinking red | Not in the course (also Canvas/network error) |
+| 🟡 Solid yellow | Idle / waiting |
 
 The buzzer is never used (it browns out the device — see `docs/tower-lamp.md`).
 
@@ -18,14 +20,14 @@ The buzzer is never used (it browns out the device — see `docs/tower-lamp.md`)
 One file, `card_reader.py`:
 
 ```
-card swipe -> AU ID -> Canvas roster + submission -> tower light color
+card swipe -> AU ID -> Canvas roster + waiver/quiz submissions -> tower light
 ```
 
 - The reader types the card data then Enter. `parse_auid` takes the middle
   7 digits of the digit run: `;00555036321?` -> `5550363`.
 - On the Pi the reader is read via Linux evdev (works with no window focus).
-- Canvas is queried with a token: roster lookup once, then the assignment
-  submission for that student; green when graded.
+- Canvas is queried with a token: roster lookup once, then the waiver and quiz
+  submissions for that student.
 - The tower light is a USB-serial device (CH340, VID `0x1A86`), 9600 8-N-1,
   one byte per command.
 
@@ -40,7 +42,8 @@ sudo bash ~/au-card-reader/deploy/install.sh
 Then:
 
 1. Set the token: `sudo nano /etc/au-card-reader/env` (`CANVAS_TOKEN=...`).
-2. Set `course_id` and `assignment_id`: `sudo nano /etc/au-card-reader/config.ini`.
+2. In `/etc/au-card-reader/config.ini` set `course_id`, `assignment_id`
+   (Safety Waiver), `quiz_assignment_id` (Safety Quiz), and `quiz_passing_score`.
 3. `sudo systemctl restart au-card-reader`
 4. Watch it: `journalctl -u au-card-reader -f`
 
@@ -65,9 +68,16 @@ scanning input devices for a keyboard, so neither depends on a fixed port.
 
 ## Logging swipes to a Google Sheet
 
-Every swipe appends a `Timestamp`, `AUID`, and `Status` (Green/Red) row to a
-Google Sheet, via a small Apps Script that the Pi calls over HTTPS. The Pi only
-needs `requests`; no Google libraries or key files.
+Every swipe appends a `Timestamp`, `AUID`, and `Status` row to a Google Sheet,
+via a small Apps Script that the Pi calls over HTTPS. The `Status` is one of:
+
+- `Fully Cleared`
+- `Waiver Signed – Missing Quiz`
+- `Quiz Passed – Missing Waiver`
+- `Incomplete – No Progress`
+- `Unregistered`
+
+The Pi only needs `requests`; no Google libraries or key files.
 
 One-time setup:
 

@@ -3,7 +3,11 @@ url = https://american.instructure.com
 # Leave blank and set the CANVAS_TOKEN env var instead (see deploy/env note).
 token =
 course_id =
+# assignment_id = the Safety Waiver (must be graded); quiz_assignment_id = the
+# Safety Quiz (must score >= quiz_passing_score).
 assignment_id =
+quiz_assignment_id =
+quiz_passing_score = 9
 
 [tower]
 # "auto" finds the CH340 by USB VID. Or set an explicit port, e.g. /dev/ttyUSB0.

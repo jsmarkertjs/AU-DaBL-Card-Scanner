@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """AU card reader -> Canvas -> Adafruit USB tower light.
 
-A student swipes; the reader acts like a keyboard and types the card data then
-Enter. We pull the AU ID out of that, ask Canvas whether the configured
-assignment has been graded, and set the tower light:
+A student swipes; the reader acts as a keyboard and types the card data then
+Enter. We look the student up in Canvas and check two things — the Safety
+Waiver (graded) and the Safety Quiz (score >= passing) — then set the light:
 
-    yellow   idle / waiting
-    green    assignment submitted and graded
-    red      anything else (not graded, or student not found)
-    red blink  Canvas/network error
+    solid green              fully cleared (waiver + quiz)
+    alternating green/yellow waiver done, quiz missing
+    alternating yellow/red   quiz passed, waiver missing
+    solid red               neither
+    blinking red            not in the course (also Canvas/network error)
 
 The buzzer is never driven (it browns out the device).
 """
@@ -85,10 +86,33 @@ class TowerLight:
             self._send(GREEN_ON)
         elif state == "red":
             self._send(RED_ON)
-        elif state == "error":
+        elif state in ("blink_red", "error"):
             self._send(RED_BLINK)
         else:  # yellow / idle
             self._send(YELLOW_ON)
+
+    def present(self, pattern: tuple, seconds: float) -> None:
+        """Show a pattern for a duration.
+
+        pattern is one of ("solid", color), ("blink", color),
+        or ("alt", color_a, color_b). Colors: "green", "yellow", "red".
+        """
+        kind = pattern[0]
+        if kind == "alt":
+            first, second = pattern[1], pattern[2]
+            end = time.monotonic() + seconds
+            i = 0
+            while True:
+                self.show(first if i % 2 == 0 else second)
+                i += 1
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.6, remaining))
+        else:
+            color = pattern[1]
+            self.show(color if kind == "solid" else "blink_" + color)
+            time.sleep(seconds)
 
     def close(self) -> None:
         self._send(RED_OFF, YELLOW_OFF, GREEN_OFF)
@@ -156,20 +180,43 @@ class Canvas:
                 return roster[form]
         return None
 
-    def is_graded(self, course_id: int, assignment_id: int, user_id: int) -> bool:
-        sub = self._get(
+    def submission(self, course_id: int, assignment_id: int, user_id: int) -> dict | None:
+        return self._get(
             f"/api/v1/courses/{course_id}/assignments/{assignment_id}"
             f"/submissions/{user_id}"
         )
-        if not sub:
-            return False
-        return bool(sub.get("graded_at")) or sub.get("workflow_state") == "graded"
+
+
+def _graded(submission: dict | None) -> bool:
+    if not submission:
+        return False
+    return bool(submission.get("graded_at")) or submission.get("workflow_state") == "graded"
+
+
+def _quiz_passed(submission: dict | None, passing: float) -> bool:
+    if not submission or submission.get("score") is None:
+        return False
+    return float(submission["score"]) >= passing
+
+
+def classify(waiver: dict | None, quiz: dict | None, passing: float) -> tuple[str, tuple]:
+    """Return (log factor, light pattern) for a student's two submissions."""
+    waiver_ok = _graded(waiver)
+    quiz_ok = _quiz_passed(quiz, passing)
+    if waiver_ok and quiz_ok:
+        return "Fully Cleared", ("solid", "green")
+    if waiver_ok:
+        return "Waiver Signed – Missing Quiz", ("alt", "green", "yellow")
+    if quiz_ok:
+        return "Quiz Passed – Missing Waiver", ("alt", "yellow", "red")
+    return "Incomplete – No Progress", ("solid", "red")
 
 
 class MockCanvas:
     """Offline stand-in so the reader + tower can be tested without a token.
 
-    Deterministic: AUIDs whose digits sum to an even number are "graded".
+    Deterministic per (user, assignment) so different cards show different
+    outcomes.
     """
 
     def roster(self, course_id: int) -> dict:
@@ -178,8 +225,16 @@ class MockCanvas:
     def find_user(self, roster: dict, auid: str):
         return int(auid) if auid.isdigit() else None
 
-    def is_graded(self, course_id: int, assignment_id: int, user_id: int) -> bool:
-        return sum(int(c) for c in str(user_id)) % 2 == 0
+    def submission(self, course_id: int, assignment_id: int, user_id: int):
+        h = (sum(int(c) for c in str(user_id)) + int(assignment_id)) % 4
+        graded = "2026-01-01T00:00:00Z"
+        if h == 0:
+            return {"score": 10.0, "graded_at": graded, "workflow_state": "graded"}
+        if h == 1:
+            return {"score": 5.0, "graded_at": graded, "workflow_state": "graded"}
+        if h == 2:
+            return {"score": None, "graded_at": None, "workflow_state": "unsubmitted"}
+        return None
 
 
 # --- Swipe logging to a Google Sheet (via Apps Script web app) --------------
@@ -220,7 +275,7 @@ def log_test(config: dict) -> int:
         print("No [log] url configured in the config file.")
         return 1
     try:
-        _post_log(config, "TEST", "Green")
+        _post_log(config, "TEST", "Fully Cleared")
     except requests.RequestException as exc:
         print(f"error: {exc}")
         return 1
@@ -317,7 +372,9 @@ def load_config(path: str) -> dict:
         "url": text("canvas", "url", "https://american.instructure.com"),
         "token": token,
         "course_id": number("canvas", "course_id", 0, int),
-        "assignment_id": number("canvas", "assignment_id", 0, int),
+        "assignment_id": number("canvas", "assignment_id", 0, int),  # Safety Waiver
+        "quiz_assignment_id": number("canvas", "quiz_assignment_id", 0, int),
+        "quiz_passing_score": number("canvas", "quiz_passing_score", 9.0, float),
         "port": text("tower", "port", "auto"),
         "device_name": text("reader", "device_name"),
         "result_seconds": number("reader", "result_seconds", 6.0, float),
@@ -347,21 +404,25 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
                 if roster is None:
                     roster = canvas.roster(config["course_id"])
                 user_id = canvas.find_user(roster, auid)
-                if user_id is not None and canvas.is_graded(
-                    config["course_id"], config["assignment_id"], user_id
-                ):
-                    status = "Green"
-                    tower.show("green")
-                    log.info("AUID %s -> graded -> GREEN", auid)
+                if user_id is None:
+                    factor, pattern = "Unregistered", ("blink", "red")
                 else:
-                    status = "Red"
-                    tower.show("red")
-                    log.info("AUID %s -> not graded / not found -> RED", auid)
-                log_swipe(config, auid, status)
+                    waiver = canvas.submission(
+                        config["course_id"], config["assignment_id"], user_id
+                    )
+                    quiz = canvas.submission(
+                        config["course_id"], config["quiz_assignment_id"], user_id
+                    )
+                    factor, pattern = classify(
+                        waiver, quiz, config["quiz_passing_score"]
+                    )
+                log.info("AUID %s -> %s", auid, factor)
+                log_swipe(config, auid, factor)
+                tower.present(pattern, config["result_seconds"])
             except requests.RequestException as exc:
                 tower.show("error")
                 log.error("Canvas error (swipe not logged): %s", exc)
-            time.sleep(config["result_seconds"])
+                time.sleep(config["result_seconds"])
             tower.show("yellow")
     except KeyboardInterrupt:
         log.info("Stopping")
