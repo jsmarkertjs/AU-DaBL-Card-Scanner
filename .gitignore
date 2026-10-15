@@ -1,6 +1,10 @@
 # Local config / secrets
 config.ini
 
+# Per-staff audio (keep local, not in the public repo)
+Sounds/
+sounds/
+
 # Python
 __pycache__/
 *.py[cod]
