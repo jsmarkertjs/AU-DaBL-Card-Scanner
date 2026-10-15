@@ -330,10 +330,13 @@ class SoundPlayer:
                 cards.append((int(m.group(1)), (m.group(2) + m.group(3) + m.group(4)).lower()))
         if not cards:
             return None
-        for card_id, key in cards:
+        for card_id, key in cards:          # 1) USB speaker if present
             if "usb" in key:
                 return f"plughw:{card_id},0"
-        return f"plughw:{cards[0][0]},0"
+        for card_id, key in cards:          # 2) the analog headphone jack
+            if "headphone" in key:
+                return f"plughw:{card_id},0"
+        return f"plughw:{cards[0][0]},0"    # 3) otherwise the first card
 
     def _resolve_device(self) -> str | None:
         """Return an ALSA device, or None to use the player's default.
