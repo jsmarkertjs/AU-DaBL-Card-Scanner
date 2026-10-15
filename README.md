@@ -144,12 +144,15 @@ enabled = true
 dir = Sounds
 player = mpg123
 volume = 80
+device = auto
 player_args =
 ```
 
 - Requires `mpg123` on the Pi (`sudo apt install mpg123`; `install.sh` does this).
-- Route audio to the **headphones jack**: `sudo raspi-config` → System Options →
-  Audio → Headphones (or `wpctl`/`amixer` on older images).
+- **Output device is auto-selected** each time it plays: it prefers a **USB
+  speaker** if one is plugged in, otherwise the **headphone jack** — so it works
+  whichever is connected, and hot-plugging is fine. Override with an explicit
+  ALSA device (e.g. `device = plughw:1,0`) or `device = none` for the default.
 - Test without swiping: `python3 card_reader.py --play 5550363`.
 - If it's silent from the service, try forcing ALSA: `player_args = -o alsa`.
 

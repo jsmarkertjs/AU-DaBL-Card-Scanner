@@ -292,12 +292,14 @@ class SoundPlayer:
     """Plays <dir>/<AUID>.<ext> through a decoder, one at a time (queued)."""
 
     def __init__(self, directory: str = "Sounds", player: str = "mpg123",
-                 volume: float = 80.0, player_args: str = "", enabled: bool = True):
+                 volume: float = 80.0, player_args: str = "", enabled: bool = True,
+                 device: str = "auto"):
         self._dir = directory
         self._player = player
         self._volume = volume
         self._player_args = shlex.split(player_args) if player_args else []
         self._enabled = enabled
+        self._device = device
         self._queue: queue.Queue = queue.Queue()
         self._thread: threading.Thread | None = None
         self._warned: set[str] = set()
@@ -313,6 +315,37 @@ class SoundPlayer:
             if os.path.exists(path):
                 return path
         return None
+
+    def _detect_device(self) -> str | None:
+        """Prefer a USB audio card; else the first (built-in) card."""
+        try:
+            with open("/proc/asound/cards", encoding="utf-8", errors="replace") as fh:
+                content = fh.read()
+        except OSError:
+            return None  # not Linux / no ALSA
+        cards: list[tuple[int, str]] = []
+        for line in content.splitlines():
+            m = re.match(r"\s*(\d+)\s+\[([^\]]*)\]:\s*(\S+)\s*-\s*(.*)", line)
+            if m:
+                cards.append((int(m.group(1)), (m.group(2) + m.group(3) + m.group(4)).lower()))
+        if not cards:
+            return None
+        for card_id, key in cards:
+            if "usb" in key:
+                return f"plughw:{card_id},0"
+        return f"plughw:{cards[0][0]},0"
+
+    def _resolve_device(self) -> str | None:
+        """Return an ALSA device, or None to use the player's default.
+
+        device = auto -> prefer USB, else built-in; "none" -> don't force;
+        anything else is used verbatim (e.g. plughw:1,0 or default).
+        """
+        if self._device and self._device.lower() == "none":
+            return None
+        if self._device and self._device.lower() != "auto":
+            return self._device
+        return self._detect_device()
 
     def enqueue(self, auid: str) -> None:
         """Queue a card's sound if a matching file exists (never blocks)."""
@@ -344,8 +377,13 @@ class SoundPlayer:
             )
             return
         cmd = [exe, "-q", *self._player_args]
-        if os.path.basename(exe) == "mpg123" and self._volume is not None:
-            cmd += ["-f", str(max(0.0, min(1.5, self._volume / 100.0)))]
+        if os.path.basename(exe) == "mpg123":
+            if "-a" not in self._player_args:
+                device = self._resolve_device()
+                if device:
+                    cmd += ["-o", "alsa", "-a", device]
+            if self._volume is not None:
+                cmd += ["-f", str(max(0.0, min(1.5, self._volume / 100.0)))]
         cmd.append(path)
         try:
             subprocess.run(cmd, timeout=120, check=False)
@@ -465,6 +503,7 @@ def load_config(path: str) -> dict:
         "audio_player": text("audio", "player", "mpg123"),
         "audio_volume": number("audio", "volume", 80.0, float),
         "audio_args": text("audio", "player_args"),
+        "audio_device": text("audio", "device", "auto"),
     }
 
 
@@ -478,6 +517,7 @@ def run(config: dict, use_stdin: bool, mock: bool = False) -> int:
         config["audio_volume"],
         config["audio_args"],
         config["audio_enabled"],
+        config["audio_device"],
     )
     roster: dict[str, int] | None = None
 
@@ -553,6 +593,7 @@ def main(argv: list[str] | None = None) -> int:
             config["audio_volume"],
             config["audio_args"],
             enabled=True,
+            device=config["audio_device"],
         )
         if audio.play_auid(args.play):
             return 0
