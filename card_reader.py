@@ -500,7 +500,7 @@ def load_config(path: str) -> dict:
         "log_enabled": flag("log", "enabled", False),
         "log_url": text("log", "url"),
         "log_token": text("log", "token"),
-        "log_timeout": number("log", "timeout", 5.0, float),
+        "log_timeout": number("log", "timeout", 10.0, float),
         "audio_enabled": flag("audio", "enabled", True),
         "audio_dir": text("audio", "dir", "Sounds"),
         "audio_player": text("audio", "player", "mpg123"),

@@ -26,7 +26,7 @@ result_seconds = 6
 enabled = false
 url =
 token =
-timeout = 5
+timeout = 10
 
 [audio]
 # Play <dir>/<AUID>.mp3 (or .wav/.ogg) through the speaker when that card is
