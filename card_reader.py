@@ -264,27 +264,20 @@ class NeoTower:
                 for i in section:
                     pixels[i] = color
         else:
-            # Traffic light: only ONE section lights — top green, middle yellow,
-            # bottom red. "blink_*" toggles just that section on/off.
-            on = True
-            if state == "green":
-                section, color = self._green, GREEN_RGB
-            elif state == "yellow":
-                section, color = self._yellow, YELLOW_RGB
-            elif state == "red":
-                section, color = self._red, RED_RGB
-            elif state in ("error", "blink_red"):
-                section, color, on = self._red, RED_RGB, int(now * 2) % 2 == 0
+            # Result states light the WHOLE tower in one color, exactly like the
+            # USB tower light. "blink_*" toggles the whole tower on/off.
+            color = {
+                "green": GREEN_RGB,
+                "yellow": YELLOW_RGB,
+                "red": RED_RGB,
+            }.get(state)
+            if state in ("error", "blink_red"):
+                color = RED_RGB if int(now * 2) % 2 == 0 else OFF_RGB
             elif state == "blink_green":
-                section, color, on = self._green, GREEN_RGB, int(now * 2) % 2 == 0
+                color = GREEN_RGB if int(now * 2) % 2 == 0 else OFF_RGB
             elif state == "blink_yellow":
-                section, color, on = self._yellow, YELLOW_RGB, int(now * 2) % 2 == 0
-            else:
-                section, color, on = None, None, False
-            self._fill(pixels, OFF_RGB)
-            if section and on:
-                for i in section:
-                    pixels[i] = color
+                color = YELLOW_RGB if int(now * 2) % 2 == 0 else OFF_RGB
+            self._fill(pixels, color or OFF_RGB)
         pixels.show()
 
     def _run(self) -> None:
