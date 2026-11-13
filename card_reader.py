@@ -493,7 +493,10 @@ class SoundPlayer:
         self._device = device
         self._queue: queue.Queue = queue.Queue()
         self._thread: threading.Thread | None = None
+        self._mixer_thread: threading.Thread | None = None
         self._warned: set[str] = set()
+        if self._enabled:
+            self._start_mixer_watchdog()
 
     def _warn_once(self, key: str, message: str) -> None:
         if key not in self._warned:
@@ -541,6 +544,42 @@ class SoundPlayer:
             return self._device
         return self._detect_device()
 
+    def _pin_mixer(self) -> None:
+        """Hold the card's PCM mixer at full scale.
+
+        USB audio cards reset their mixer to ~40% whenever the device is
+        re-enumerated (which happens on the Pi), making playback quieter than
+        the configured `volume`. Pinning it here keeps the app's `volume` the
+        effective level. Best effort / no-op when there's no ALSA card.
+        """
+        device = self._resolve_device()
+        if not device:
+            return
+        match = re.match(r"(?:plug)?hw:(\d+)", device)
+        if not match:
+            return
+        try:
+            subprocess.run(
+                ["amixer", "-c", match.group(1), "sset", "PCM", "100%", "unmute"],
+                timeout=5, check=False,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+    def _mixer_loop(self) -> None:
+        while True:
+            try:
+                self._pin_mixer()
+            except Exception:
+                pass
+            time.sleep(3)
+
+    def _start_mixer_watchdog(self) -> None:
+        if self._mixer_thread is None or not self._mixer_thread.is_alive():
+            self._mixer_thread = threading.Thread(target=self._mixer_loop, daemon=True)
+            self._mixer_thread.start()
+
     def enqueue(self, auid: str) -> None:
         """Queue a card's sound if a matching file exists (never blocks)."""
         if not self._enabled:
@@ -581,6 +620,7 @@ class SoundPlayer:
                 scale = int(max(0.0, min(1.5, self._volume / 100.0)) * 32768)
                 cmd += ["-f", str(scale)]
         cmd.append(path)
+        self._pin_mixer()  # re-assert full-scale right before playback
         try:
             subprocess.run(cmd, timeout=120, check=False)
         except Exception as exc:
