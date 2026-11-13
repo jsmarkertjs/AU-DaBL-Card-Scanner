@@ -11,7 +11,7 @@ checks Canvas for the **Safety Waiver** (graded) and the **Safety Quiz**
 | 🟡🔴 Yellow/Red (alternating) | Quiz passed, waiver missing |
 | 🔴 Solid red | Neither — no progress |
 | 🔴 Blinking red | Not in the course (also Canvas/network error) |
-| 🟡 Solid yellow | Idle / waiting |
+| ⚫ Off | Idle / waiting |
 
 The buzzer is never used (it browns out the device — see `docs/tower-lamp.md`).
 

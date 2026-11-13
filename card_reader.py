@@ -87,13 +87,15 @@ class TowerLight:
 
     def show(self, state: str) -> None:
         self._send(RED_OFF, YELLOW_OFF, GREEN_OFF)
+        if state == "idle":
+            return  # tower lamp is off while idle
         if state == "green":
             self._send(GREEN_ON)
         elif state == "red":
             self._send(RED_ON)
         elif state in ("blink_red", "error"):
             self._send(RED_BLINK)
-        else:  # yellow / idle
+        else:  # yellow
             self._send(YELLOW_ON)
 
     def present(self, pattern: tuple, seconds: float) -> None:

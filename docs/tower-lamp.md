@@ -27,7 +27,7 @@ physical unplug/replug. The app never sends buzzer bytes.
 
 | State | Light |
 |-------|-------|
-| idle / waiting | Yellow solid (`0x12`) |
+| idle / waiting | Off (all colors off) |
 | assignment graded | Green solid (`0x14`) |
 | not graded / not found | Red solid (`0x11`) |
 | Canvas / network error | Red blink (`0x41`) |

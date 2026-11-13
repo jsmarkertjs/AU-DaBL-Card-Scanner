@@ -49,7 +49,7 @@ LEDs dim). Keep `brightness = 80` in the config.
 
 Result states light the **whole tower** in one color, exactly like the USB tower
 light; the green/yellow/red sections are only used for the idle rainbow. The USB
-tower runs in parallel (idle = solid yellow). Both are driven by `TowerSet` in
+tower runs in parallel (idle = off). Both are driven by `TowerSet` in
 `card_reader.py`.
 
 ## Config
