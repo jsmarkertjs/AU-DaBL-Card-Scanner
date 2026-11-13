@@ -155,6 +155,10 @@ player_args =
   ALSA device (e.g. `device = plughw:1,0`) or `device = none` for the default.
 - Test without swiping: `python3 card_reader.py --play 5550363`.
 - If it's silent from the service, try forcing ALSA: `player_args = -o alsa`.
+- The card's **mixer is held at full scale** (re-asserted every few seconds and
+  before each playback) so the `volume` setting is always the effective level.
+  USB speakers otherwise silently reset their mixer to ~40% whenever the Pi
+  re-enumerates USB, which would make playback quieter than configured.
 
 ## eInk status display (optional)
 
