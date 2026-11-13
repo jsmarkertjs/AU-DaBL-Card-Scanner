@@ -649,6 +649,7 @@ class EInkDisplay:
         if self._display is not None or self._failed:
             return self._display
         try:
+            import board
             import busio
             import digitalio
             from adafruit_epd.ssd1680 import Adafruit_SSD1680
