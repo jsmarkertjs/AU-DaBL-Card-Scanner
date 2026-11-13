@@ -251,8 +251,9 @@ class NeoTower:
     def _draw(self, pixels, now: float) -> None:
         with self._lock:
             state = self._state
-        self._fill(pixels, OFF_RGB)
         if state == "idle":
+            # Rainbow: the three sections each show a hue, 1/3 of the wheel apart.
+            self._fill(pixels, OFF_RGB)
             phase = (now / self._idle_seconds) % 1.0
             for section, offset in (
                 (self._green, 0.0), (self._yellow, 1 / 3), (self._red, 2 / 3),
@@ -260,26 +261,22 @@ class NeoTower:
                 color = _hsv_rgb(phase + offset)
                 for i in section:
                     pixels[i] = color
-        elif state == "green":
-            self._paint(pixels, self._green, GREEN_RGB)
-        elif state == "yellow":
-            self._paint(pixels, self._yellow, YELLOW_RGB)
-        elif state == "red":
-            self._paint(pixels, self._red, RED_RGB)
-        elif state in ("error", "blink_red"):
-            if int(now * 2) % 2 == 0:
-                self._paint(pixels, self._red, RED_RGB)
-        elif state == "blink_green":
-            if int(now * 2) % 2 == 0:
-                self._paint(pixels, self._green, GREEN_RGB)
-        elif state == "blink_yellow":
-            if int(now * 2) % 2 == 0:
-                self._paint(pixels, self._yellow, YELLOW_RGB)
+        else:
+            # Result states light the WHOLE tower in one color, exactly like the
+            # USB tower light. "blink_*" toggles the whole tower on/off.
+            color = {
+                "green": GREEN_RGB,
+                "yellow": YELLOW_RGB,
+                "red": RED_RGB,
+            }.get(state)
+            if state in ("error", "blink_red"):
+                color = RED_RGB if int(now * 2) % 2 == 0 else OFF_RGB
+            elif state == "blink_green":
+                color = GREEN_RGB if int(now * 2) % 2 == 0 else OFF_RGB
+            elif state == "blink_yellow":
+                color = YELLOW_RGB if int(now * 2) % 2 == 0 else OFF_RGB
+            self._fill(pixels, color or OFF_RGB)
         pixels.show()
-
-    def _paint(self, pixels, indices, color) -> None:
-        for i in indices:
-            pixels[i] = color
 
     def _run(self) -> None:
         while True:
