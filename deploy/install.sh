@@ -30,6 +30,11 @@ pip3 install ${PIP_BREAK} adafruit-blinka adafruit-circuitpython-epd \
     adafruit-circuitpython-framebuf adafruit-circuitpython-neopixel rpi_ws281x \
     || echo "  (pip install failed; the display / NeoPixel tower will stay disabled)"
 
+# Blinka requires gpiod >= 2.2.2, but Raspbian trixie ships 2.2.0. Install a
+# shadow copy (--ignore-installed, since apt owns the old one) so board imports.
+pip3 install ${PIP_BREAK} --ignore-installed "gpiod>=2.2.2,<2.3" \
+    || echo "  (gpiod install failed; Blinka may refuse to load)"
+
 echo "Setting up configuration in ${CONF_DIR}..."
 mkdir -p "${CONF_DIR}"
 if [ ! -f "${CONF_DIR}/config.ini" ]; then

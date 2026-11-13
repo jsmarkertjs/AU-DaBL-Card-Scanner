@@ -16,3 +16,7 @@ pyserial>=3.5
 # as root (see docs/neotower.md):
 #   pip3 install rpi_ws281x adafruit-circuitpython-neopixel
 # Optional too; a missing device/library is warned once and skipped.
+#
+# Note: recent Adafruit-Blinka requires gpiod>=2.2.2, but Raspbian trixie ships
+# 2.2.0, so board imports fail until you install a newer one (install.sh does):
+#   pip3 install --break-system-packages --ignore-installed "gpiod>=2.2.2,<2.3"
