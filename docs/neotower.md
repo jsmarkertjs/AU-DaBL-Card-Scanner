@@ -41,14 +41,16 @@ LEDs dim). Keep `brightness = 80` in the config.
 | State | NeoPixel tower |
 |-------|----------------|
 | Idle | **rainbow flow** — the three sections cycle the color wheel 1/3 (120°) apart, ~8s per full cycle |
-| Fully Cleared | **green** section on |
-| Waiver Signed – Missing Quiz | **alternate** green / yellow sections |
-| Quiz Passed – Missing Waiver | **alternate** yellow / red sections |
-| Incomplete – No Progress | **red** section on |
-| Unregistered / Canvas error | **red** section blinking |
+| Fully Cleared | **whole tower green** |
+| Waiver Signed – Missing Quiz | **whole tower** alternating green / yellow |
+| Quiz Passed – Missing Waiver | **whole tower** alternating yellow / red |
+| Incomplete – No Progress | **whole tower red** |
+| Unregistered / Canvas error | **whole tower blinking red** |
 
-The USB tower runs in parallel (idle = solid yellow). Both are driven by
-`TowerSet` in `card_reader.py`.
+Result states light the **whole tower** in one color, exactly like the USB tower
+light; the green/yellow/red sections are only used for the idle rainbow. The USB
+tower runs in parallel (idle = solid yellow). Both are driven by `TowerSet` in
+`card_reader.py`.
 
 ## Config
 

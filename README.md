@@ -199,11 +199,11 @@ needs `/dev/mem`). See `docs/neotower.md` for wiring, power, and section layout.
 | State | NeoPixel tower |
 | ----- | -------------- |
 | Idle | rainbow flow — 3 sections 120° apart, 8 s/cycle |
-| Fully cleared | green section |
-| Waiver only | alternate green / yellow |
-| Quiz only | alternate yellow / red |
-| Incomplete | red section |
-| Unregistered / error | red blinking |
+| Fully cleared | whole tower green |
+| Waiver only | whole tower alternating green / yellow |
+| Quiz only | whole tower alternating yellow / red |
+| Incomplete | whole tower red |
+| Unregistered / error | whole tower blinking red |
 
 `deploy/install.sh` installs `rpi_ws281x` + `adafruit-circuitpython-neopixel`.
 Use a **USB speaker** (the app already prefers one) to avoid the NeoPixel PWM
