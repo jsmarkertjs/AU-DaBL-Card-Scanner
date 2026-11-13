@@ -63,8 +63,20 @@ labels carry the **same** signals as the adjacent sockets.
 
 ## Setup
 
-1. Enable SPI: `sudo raspi-config` -> Interface Options -> SPI -> Enable, reboot.
-2. Confirm SPI is present: `ls /dev/spidev0.*`.
+1. Enable SPI: `sudo raspi-config` -> Interface Options -> SPI -> Enable.
+2. Free the chip-select pin: add this to `/boot/firmware/config.txt` (the
+   installer does it automatically):
+   ```
+   dtoverlay=spi0-0cs
+   ```
+   Why: with SPI enabled the kernel claims **GPIO8/CE0**, so the eInk driver
+   can't grab it as its chip-select and init fails with
+   `OSError: [Errno 16] Device or resource busy`. `spi0-0cs` leaves the pin free
+   (`/dev/spidev0.0` still works).
+3. **Reboot** (required after the steps above).
+4. Confirm SPI is present: `ls /dev/spidev0.*`.
+5. Check it came up: `journalctl -u au-card-reader -n 5` should say
+   `eInk display ready (250x122)`.
 
 ## Software
 

@@ -21,6 +21,15 @@ if command -v raspi-config >/dev/null 2>&1; then
     raspi-config nonint do_spi 0 || true
 fi
 
+# Free CE0 (GPIO8) from the SPI driver so it can be used as the eInk
+# chip-select. Without this, GPIO8 is claimed and the display fails to init.
+CONFIG_TXT=/boot/firmware/config.txt
+[ -f "${CONFIG_TXT}" ] || CONFIG_TXT=/boot/config.txt
+if [ -f "${CONFIG_TXT}" ] && ! grep -q "dtoverlay=spi0-0cs" "${CONFIG_TXT}"; then
+    echo "dtoverlay=spi0-0cs" >> "${CONFIG_TXT}"
+    echo "  -> added dtoverlay=spi0-0cs to ${CONFIG_TXT} (REBOOT required)"
+fi
+
 echo "Installing eInk + NeoPixel libraries (Blinka, EPD, NeoPixel)..."
 PIP_BREAK=""
 if pip3 install --help 2>/dev/null | grep -q -- "--break-system-packages"; then
