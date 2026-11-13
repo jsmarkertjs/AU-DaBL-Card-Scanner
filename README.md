@@ -156,6 +156,73 @@ player_args =
 - Test without swiping: `python3 card_reader.py --play 5550363`.
 - If it's silent from the service, try forcing ALSA: `player_args = -o alsa`.
 
+## eInk status display (optional)
+
+A 2.13" monochrome eInk screen (Adafruit **#4195** FeatherWing, SSD1680) shows an
+idle prompt and the result of each swipe — the same text as the log factor:
+
+| Screen | Shows |
+| ------ | ----- |
+| Idle | `Swipe your AU card` / `Design & Build Lab` |
+| Fully cleared | `Welcome, {First}!` / `Safety training complete` |
+| Otherwise | the log factor, e.g. `Waiver Signed – Missing Quiz` |
+
+Wiring, pins, and the Raspberry Pi header reference are in
+`docs/eink-display.md`. The panel is refreshed on a **background thread**, so it
+never slows the light/sound/log path; if it isn't wired (or the libraries are
+missing/SPI is off) the app logs one warning and keeps running.
+
+`deploy/install.sh` installs the libraries (`python3-pil`, `fonts-dejavu`, plus
+`adafruit-blinka` + `adafruit-circuitpython-epd`) and enables SPI. Config:
+
+```ini
+[display]
+enabled = true
+cs = CE0
+dc = D22
+rst = D13
+busy =
+idle_text = Swipe your AU card
+subtitle = Design & Build Lab
+```
+
+Test without swiping: `python3 card_reader.py --test-display` (cycles idle + each
+result).
+
+## NeoPixel tower (optional)
+
+A tower made of four chained **WS2812 strips (4 × 9 = 36 LEDs)** shows the same
+states as the USB tower, with a flowing **rainbow** for idle. It's driven
+directly from the Pi on **GPIO18**, so the service runs as **root** (`rpi_ws281x`
+needs `/dev/mem`). See `docs/neotower.md` for wiring, power, and section layout.
+
+| State | NeoPixel tower |
+| ----- | -------------- |
+| Idle | rainbow flow — 3 sections 120° apart, 8 s/cycle |
+| Fully cleared | green section |
+| Waiver only | alternate green / yellow |
+| Quiz only | alternate yellow / red |
+| Incomplete | red section |
+| Unregistered / error | red blinking |
+
+`deploy/install.sh` installs `rpi_ws281x` + `adafruit-circuitpython-neopixel`.
+Use a **USB speaker** (the app already prefers one) to avoid the NeoPixel PWM
+overlapping the 3.5 mm audio jack.
+
+```ini
+[neotower]
+enabled = true
+pin = D18
+count = 36
+leds_per_strip = 9
+brightness = 80
+order = RGB
+idle_seconds = 8
+```
+
+Test: `sudo python3 card_reader.py --config /etc/au-card-reader/config.ini --test-neotower`
+(`--test-lamp` now cycles both towers).
+
 ## Run locally on a laptop (no Pi)
 
 ```bash
@@ -168,6 +235,8 @@ python card_reader.py --config config.ini --test-lamp # exercise the tower
 ## Notes
 
 - The Pi needs internet for Canvas.
-- Groups: `dialout` = tower serial, `input` = card reader, `audio` = sound.
+- Groups: the service runs as **root** (the NeoPixel/PWM driver needs it), which
+  also covers `dialout` (tower serial), `input` (reader), `audio`, and the eInk
+  `spi`/`gpio`.
 - If the tower serial gets grabbed on the Pi, mask `brltty`/`ModemManager`
   (see `docs/tower-lamp.md`).

@@ -5,9 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-# input = read the card reader via /dev/input; dialout = the tower light serial port
-SupplementaryGroups=input dialout audio
+# root: the NeoPixel driver (rpi_ws281x) needs /dev/mem; root also covers the
+# card reader (input), tower serial (dialout), audio, and the eInk SPI/GPIO.
+User=root
 WorkingDirectory=/opt/au-card-reader
 # Optional file with CANVAS_TOKEN=... (see deploy/env.example)
 EnvironmentFile=-/etc/au-card-reader/env

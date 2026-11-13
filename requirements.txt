@@ -4,3 +4,15 @@ pyserial>=3.5
 # On the Raspberry Pi, install evdev from apt instead of pip:
 #   sudo apt install python3-evdev
 # It is only needed to read the card reader on the Pi.
+
+# eInk status display (Adafruit 2.13" mono FeatherWing #4195). On the Pi these
+# are installed via pip3 (deploy/install.sh does this), alongside the apt
+# packages python3-pil and fonts-dejavu:
+#   pip3 install adafruit-blinka adafruit-circuitpython-epd adafruit-circuitpython-framebuf
+# The display is optional; without these the app runs and just skips it.
+
+# NeoPixel tower (4 x 9 WS2812 LEDs on GPIO18). The Pi drives it directly, which
+# needs rpi_ws281x + the CircuitPython NeoPixel library and the service running
+# as root (see docs/neotower.md):
+#   pip3 install rpi_ws281x adafruit-circuitpython-neopixel
+# Optional too; a missing device/library is warned once and skipped.

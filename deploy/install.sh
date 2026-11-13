@@ -10,11 +10,25 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONF_DIR=/etc/au-card-reader
-SERVICE_USER="${SUDO_USER:-pi}"
 
 echo "Installing system packages..."
 apt-get update
-apt-get install -y python3-requests python3-serial python3-evdev mpg123 alsa-utils
+apt-get install -y python3-requests python3-serial python3-evdev mpg123 alsa-utils \
+    python3-pil python3-pip python3-dev fonts-dejavu
+
+echo "Enabling SPI (for the eInk display)..."
+if command -v raspi-config >/dev/null 2>&1; then
+    raspi-config nonint do_spi 0 || true
+fi
+
+echo "Installing eInk + NeoPixel libraries (Blinka, EPD, NeoPixel)..."
+PIP_BREAK=""
+if pip3 install --help 2>/dev/null | grep -q -- "--break-system-packages"; then
+    PIP_BREAK="--break-system-packages"
+fi
+pip3 install ${PIP_BREAK} adafruit-blinka adafruit-circuitpython-epd \
+    adafruit-circuitpython-framebuf adafruit-circuitpython-neopixel rpi_ws281x \
+    || echo "  (pip install failed; the display / NeoPixel tower will stay disabled)"
 
 echo "Setting up configuration in ${CONF_DIR}..."
 mkdir -p "${CONF_DIR}"
@@ -28,12 +42,8 @@ if [ ! -f "${CONF_DIR}/env" ]; then
     echo "  -> put your Canvas token in ${CONF_DIR}/env"
 fi
 
-echo "Adding ${SERVICE_USER} to input + dialout + audio groups..."
-usermod -aG input,dialout,audio "${SERVICE_USER}" || true
-
-echo "Installing systemd service..."
-sed -e "s|^User=.*|User=${SERVICE_USER}|" \
-    -e "s|^WorkingDirectory=.*|WorkingDirectory=${REPO_DIR}|" \
+echo "Installing systemd service (runs as root for the NeoPixel/PWM)..."
+sed -e "s|^WorkingDirectory=.*|WorkingDirectory=${REPO_DIR}|" \
     "${REPO_DIR}/deploy/au-card-reader.service" \
     > /etc/systemd/system/au-card-reader.service
 systemctl daemon-reload

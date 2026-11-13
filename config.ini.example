@@ -41,3 +41,31 @@ volume = 80
 device = auto
 # Extra player args if needed, e.g. "-o alsa" to force ALSA output.
 player_args =
+
+[display]
+# Adafruit 2.13" mono eInk FeatherWing (#4195, SSD1680) status screen. Shows an
+# idle prompt and the result of each swipe. Needs SPI enabled and the
+# EPD/Blinka libraries (deploy/install.sh handles both). See docs/eink-display.md.
+# If it isn't wired up, the app warns once and keeps running.
+enabled = true
+# Blinka pin names (CE0/D22...) or plain BCM numbers. These match the default
+# wiring in docs/eink-display.md: CS->GPIO8/CE0, DC->GPIO22, RST->GPIO13.
+cs = CE0
+dc = D22
+rst = D13
+# Leave blank: the optional BUSY pad isn't wired, so a fixed delay is used.
+busy =
+idle_text = Swipe your AU card
+subtitle = Design & Build Lab
+
+[neotower]
+# NeoPixel tower: 4 strips x 9 LEDs (36 total) chained on one data line, driven
+# directly from the Pi. Mirrors the tower-light states; idle is a rainbow flow.
+# See docs/neotower.md. Needs rpi_ws281x and the service running as root.
+enabled = true
+pin = D18             # Blinka name or BCM number (GPIO18 = physical pin 12)
+count = 36            # total LEDs in the chain
+leds_per_strip = 9    # 3 green, 3 yellow, 3 red per strip
+brightness = 80       # 0-255
+order = RGB           # matches the strip's NEO_RGB
+idle_seconds = 8      # one full rainbow cycle
