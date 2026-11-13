@@ -178,7 +178,7 @@ class NeoTower:
 
     def __init__(self, enabled: bool = True, pin: str = "D18", count: int = 36,
                  leds_per_strip: int = 9, brightness: float = 80.0,
-                 order: str = "RGB", idle_seconds: float = 8.0):
+                 order: str = "GRB", idle_seconds: float = 8.0):
         self._enabled = enabled
         self._pin_name = pin
         self._count = count
@@ -225,7 +225,7 @@ class NeoTower:
             name = (self._pin_name or "").strip()
             if name.isdigit():
                 name = "D" + name
-            order = getattr(neopixel, (self._order or "RGB").strip().upper(), neopixel.RGB)
+            order = getattr(neopixel, (self._order or "GRB").strip().upper(), neopixel.GRB)
             self._pixels = neopixel.NeoPixel(
                 getattr(board, name),
                 self._count,
@@ -896,7 +896,7 @@ def load_config(path: str) -> dict:
         "neotower_count": number("neotower", "count", 36, int),
         "neotower_leds_per_strip": number("neotower", "leds_per_strip", 9, int),
         "neotower_brightness": number("neotower", "brightness", 80.0, float),
-        "neotower_order": text("neotower", "order", "RGB"),
+        "neotower_order": text("neotower", "order", "GRB"),
         "neotower_idle_seconds": number("neotower", "idle_seconds", 8.0, float),
     }
 

@@ -8,7 +8,7 @@
   `0-2` green, `3-5` yellow, `6-8` red.
 - **Driven directly by the Pi** (no extra board) with `rpi_ws281x` +
   `adafruit-circuitpython-neopixel` (via Blinka).
-- **Color order:** `RGB` (matches the strip's `NEO_RGB`). **Brightness:** `80`.
+- **Color order:** `GRB` (the WS2812 default). **Brightness:** `80`.
 
 ## Wiring — strip → Raspberry Pi 3 B+
 
@@ -61,7 +61,7 @@ pin = D18             # Blinka name or BCM number
 count = 36
 leds_per_strip = 9    # 3 green, 3 yellow, 3 red per strip
 brightness = 80       # 0-255
-order = RGB           # matches NEO_RGB
+order = GRB           # strip color order (use RGB if red/green come out swapped)
 idle_seconds = 8      # duration of one full rainbow cycle
 ```
 

@@ -216,7 +216,7 @@ pin = D18
 count = 36
 leds_per_strip = 9
 brightness = 80
-order = RGB
+order = GRB
 idle_seconds = 8
 ```
 

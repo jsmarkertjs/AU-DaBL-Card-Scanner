@@ -67,5 +67,5 @@ pin = D18             # Blinka name or BCM number (GPIO18 = physical pin 12)
 count = 36            # total LEDs in the chain
 leds_per_strip = 9    # 3 green, 3 yellow, 3 red per strip
 brightness = 80       # 0-255
-order = RGB           # matches the strip's NEO_RGB
+order = GRB           # strip color order (GRB is the WS2812 default; use RGB if swapped)
 idle_seconds = 8      # one full rainbow cycle
