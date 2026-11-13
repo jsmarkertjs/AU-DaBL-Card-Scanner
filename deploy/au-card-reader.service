@@ -11,6 +11,8 @@ User=root
 WorkingDirectory=/opt/au-card-reader
 # Optional file with CANVAS_TOKEN=... (see deploy/env.example)
 EnvironmentFile=-/etc/au-card-reader/env
+# Max out the USB audio card's mixer (it resets on replug/reboot).
+ExecStartPre=-/opt/au-card-reader/deploy/audio-volume.sh
 ExecStart=/usr/bin/python3 card_reader.py --config /etc/au-card-reader/config.ini
 Restart=on-failure
 RestartSec=5

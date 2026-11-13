@@ -57,7 +57,9 @@ if [ ! -f "${CONF_DIR}/env" ]; then
 fi
 
 echo "Installing systemd service (runs as root for the NeoPixel/PWM)..."
+chmod +x "${REPO_DIR}/deploy/audio-volume.sh" || true
 sed -e "s|^WorkingDirectory=.*|WorkingDirectory=${REPO_DIR}|" \
+    -e "s|^ExecStartPre=.*|ExecStartPre=-${REPO_DIR}/deploy/audio-volume.sh|" \
     "${REPO_DIR}/deploy/au-card-reader.service" \
     > /etc/systemd/system/au-card-reader.service
 systemctl daemon-reload
