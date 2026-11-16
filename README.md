@@ -159,6 +159,11 @@ player_args =
   before each playback) so the `volume` setting is always the effective level.
   USB speakers otherwise silently reset their mixer to ~40% whenever the Pi
   re-enumerates USB, which would make playback quieter than configured.
+- A **bus-powered USB speaker draws more current the louder it plays**. On a
+  marginal 5V rail this can brown out the Pi and reset the speaker mid-track
+  (audio cuts off). If that happens, **lower `volume`** (and the NeoPixel
+  `brightness`); the real fix is a better power path (short/thick cable, or
+  feeding the Pi's 5V via the GPIO pins).
 
 ## eInk status display (optional)
 
